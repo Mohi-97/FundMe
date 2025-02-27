@@ -7,7 +7,8 @@ import {MockV3Aggregator} from "../test/Mocks/MockV3Aggregator.sol";
 contract HelperConfig is Script{
 
     NetworkConfig public activeNetworkConfig;
-
+    uint8 public constant DECIMALS = 8;
+    int256 public constant INIT_PRICE = 2000e8;
     struct NetworkConfig{
         address priceFeed; // ETC/USD price feed address
     }
@@ -15,10 +16,13 @@ contract HelperConfig is Script{
     constructor(){
         if(block.chainid == 11155111){
             activeNetworkConfig = getSepoliaEthConfig();
-        }else {
-            activeNetworkConfig = getAnvilEthConfig();
+        }else if(block.chainid == 1) {
+            activeNetworkConfig = getMainnetEthConfig();
+        }else{
+            activeNetworkConfig = getOrCreateAnvilEthConfig();
         }
     }
+
     function getSepoliaEthConfig() public pure returns(NetworkConfig memory){
         NetworkConfig memory sepoliaConfig = NetworkConfig({
             priceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306
@@ -26,9 +30,23 @@ contract HelperConfig is Script{
         return sepoliaConfig;
     }
 
-    function getAnvilEthConfig() public returns(NetworkConfig memory){
+    function getMainnetEthConfig() public pure returns(NetworkConfig memory){
+        NetworkConfig memory mainEthConfig = NetworkConfig({
+            priceFeed: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
+        });
+        return mainEthConfig;
+    }
+
+    function getOrCreateAnvilEthConfig() public returns(NetworkConfig memory){
+        if(activeNetworkConfig.priceFeed != address(0)) {
+            return  activeNetworkConfig;
+        }
+
         vm.startBroadcast();
-        MockV3Aggregator mockPriceFeed = new MockV3Aggregator(8 , 2500e8);
+        MockV3Aggregator mockPriceFeed = new MockV3Aggregator(
+            DECIMALS,
+            INIT_PRICE
+        );
         vm.stopBroadcast();
 
         NetworkConfig memory anvilConfig = NetworkConfig({
